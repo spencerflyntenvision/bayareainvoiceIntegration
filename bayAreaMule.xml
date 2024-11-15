@@ -1,0 +1,379 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:netsuite="http://www.mulesoft.org/schema/mule/netsuite"
+	xmlns:email="http://www.mulesoft.org/schema/mule/email"
+	xmlns:azure-storage="http://www.mulesoft.org/schema/mule/azure-storage"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd 
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/azure-storage http://www.mulesoft.org/schema/mule/azure-storage/current/mule-azure-storage.xsd
+http://www.mulesoft.org/schema/mule/netsuite http://www.mulesoft.org/schema/mule/netsuite/current/mule-netsuite.xsd">
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="9abda572-3b60-40c5-9f35-6ee66f9fd2ad" >
+		<db:mssql-connection host="40.119.40.91" port="1433" user="sflynt" password="cChiR2P50@@@" databaseName="RAMP_ENTERPRISE" />
+	</db:config>
+	<db:config name="EnvisionDatabase" doc:name="Database Config" doc:id="89880816-1006-4f2b-903d-d0b71521a08a" >
+		<db:mssql-connection host="mulesoft-envision-cold.database.windows.net" port="1433" user="mulesoft" password="Hrz4K2P2e6BAFz" databaseName="NetSuiteIntegration" />
+	</db:config>
+	<azure-storage:config name="Azure_Storage_Config" doc:name="Azure Storage Config" doc:id="b9cff280-b19e-4e91-b087-a524e341ae4a" >
+		<azure-storage:sas-token-azure-connection accountName="ecsintegration" sasToken="?sv=2022-11-02&amp;ss=bfqt&amp;srt=sco&amp;sp=rwdlacupyx&amp;se=2025-01-01T22:58:57Z&amp;st=2024-01-03T14:58:57Z&amp;spr=https&amp;sig=yKhLG4Vx%2Bz1QVXN%2BhAh5BnxqxBp4xLNce%2BWVfvd3RoE%3D" />
+	</azure-storage:config>
+	<netsuite:config name="NetSuite_Config_Test" doc:name="NetSuite Config" doc:id="bd333ab8-1b24-4913-b82d-2a5f8316f858" runServerSuiteScriptAndTriggerWorkflows="true" sendRunServerSuiteScript="true">
+		<netsuite:token-based-authentication-connection consumerKey="629b6ef8b5078c0e74858fa1178bdf880f63ac4902a422296cd72a279a327a1f" consumerSecret="832bbd8ba9a7cb76d874ebbad6ce9c46648c25198fba20d9f12001374eab714c" tokenId="29fa40ea2693df72018a29ddef31d46f7aa31ffd53e28526269fc7a037bce693" tokenSecret="6be829964de221cdc16ac72504ecf8d9b9dfc2bec2c2cc815883a75d85685f69" account="8417759_SB2" wsdlVersion="V2020_2" />
+	</netsuite:config>
+	<netsuite:config name="NetSuite_Config_PROD" doc:name="NetSuite Config" doc:id="413c4179-8813-42a0-bd3c-983f5292836d" runServerSuiteScriptAndTriggerWorkflows="true" sendRunServerSuiteScript="true">
+		<netsuite:token-based-authentication-connection consumerKey="1793f9a61e3dccadffd7ecfedc3d37762ea7839de4d012413d7fb83f863f47b5" consumerSecret="60ebe76291f6a140f4c9a4544a443b6f81d692458cb315386799e03745903aa4" tokenId="74bb8210a37a1cf2d2ca9331bf6fb084deb336431d41ac97edf51220da915588" tokenSecret="2d2ecbc54042b1f7d3eb46bf25eb8b19be0c1d34da77db5a7895adc15a79f95a" account="8417759" wsdlVersion="V2020_2"/>
+	</netsuite:config>
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="a607fab0-09a7-4f9f-a933-a5952a7f7d1e" basePath="/">
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+<flow name="RampDatabasePullBayArea" doc:id="3b7c14ca-4f21-4637-9ded-59dabf056fed" maxConcurrency="1">
+		<http:listener doc:name="Listener" doc:id="826a0d8b-f724-43a5-b8d9-5924cb8a43df" config-ref="HTTP_Listener_config" path="/Oakland"/>
+		<logger level="INFO" doc:name="Logger" doc:id="95a7f623-bcf1-47ae-9eb7-ccd5a710722c" message="#[vars.maxDateTime]"/>
+		<set-payload value='#[%dw 2.0 &#10;output application/java &#10;---&#10;[{status:80}]]' doc:name="Set Payload" doc:id="3a55764e-3714-48d3-b80d-a645c710f6c3" />
+		<db:bulk-update doc:name="Bulk update" doc:id="af8d9d59-946e-43cc-bbbd-4d372b54b993" config-ref="Database_Config">
+			<db:sql ><![CDATA[update invoice 
+set EditWho = 'Mule-IP' 
+where status = :status 
+and facilityname = 'Oakland' ]]></db:sql>
+		</db:bulk-update>
+		<logger level="INFO" doc:name="Logger" doc:id="3a0b2431-bc8c-45a2-8574-c66a114123bd" message="#[vars.maxDateTime[0][0]]" category="vars.maxDateTime[0][0]"/>
+		<db:stored-procedure doc:name="Stored procedure" doc:id="ce2f4692-741a-47db-8545-4760e0a2256b" config-ref="Database_Config">
+			<db:sql ><![CDATA[{ call rampnetsuiteintegrationBayArea }]]></db:sql>
+		</db:stored-procedure>
+		<ee:transform doc:name="Transform Message" doc:id="f3966b00-4462-4f6a-a678-14eaafc5da59" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload.resultSet1]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="df598b52-3cf2-473d-b8cd-b6fbfb56038c" message="#[payload]"/>
+		<set-variable value="#[payload]" doc:name="Set Variable" doc:id="38c3769c-ef16-459b-b1dc-3c3cc96cb0ce" variableName="CSVLOAD"/>
+		<set-variable value="#[%dw 2.0&#10;output application/csv&#10;---&#10;vars.CSVLOAD]" doc:name="Convert SQL Pull to CSV" doc:id="11798fdb-36a6-443a-b843-e6dea6cd3449" variableName="AZUREUPLOAD"/>
+		<choice doc:name="Choice" doc:id="10934076-8e08-4e91-8f70-a950beed235d" >
+			<when expression="#[sizeOf(vars.AZUREUPLOAD) &gt; 0]">
+				<set-variable value='#[%dw 2.0 &#10;output text/plain &#10;--- &#10;write(vars.AZUREUPLOAD, "application/csv")]' doc:name="Convert CSV to Plain Text" doc:id="ca14f912-44bd-428f-a2ab-9121a7f5e1cb" variableName="AZUREUPLOADTEXT" />
+				<set-variable value="#[%dw 2.0&#10;import * from dw::core::Binaries&#10;&#10;output text/plain&#10;---&#10;toBase64(vars.AZUREUPLOADTEXT as Binary)]" doc:name="Convert PlainText to Binary" doc:id="cbaefc9e-30a2-4368-bcf8-a9ed33fd70e4" variableName="binary1" />
+				<set-variable value="#[%dw 2.0&#10;import * from dw::core::Binaries&#10;output application/octet-stream with binary deferred=true, bufferSize = 9999999&#10;---&#10;fromBase64(vars.binary1 as String) as Binary]" doc:name="Convert Binary to Stream" doc:id="3b7f7f9c-a304-4a89-84c5-83e396ceb9f8" variableName="binary2" />
+				<logger level="INFO" doc:name="Logger" doc:id="f1c9ea71-0d59-4ab4-b8f8-fcfaa6fa72e9" category="Size of AzureUpload" message="#[sizeOf(vars.AZUREUPLOAD)]" />
+				<ee:transform doc:name="Transform Message" doc:id="cbc264c1-76b9-4e5a-8e2e-7bf1b5aa128a">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+import * from dw::Runtime
+output application/json
+---
+{
+	user:1 wait 10000
+}
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<azure-storage:upload-file-in-directory-with-stream doc:name="Upload file in directory with stream" doc:id="50c5fe25-5921-4e4a-ba81-ea189ce349ae" config-ref="Azure_Storage_Config">
+					<azure-storage:filename directoryName="WMS/Bay Area/Input" shareName="invoice" fileName='#[uuid() ++ ".csv"]' fileStream="#[vars.binary2]"/>
+				</azure-storage:upload-file-in-directory-with-stream>
+				<set-payload value='#[%dw 2.0 &#10;output application/java &#10;---&#10;[{EditWho:"Mule-IP",Status:90}]]' doc:name="Set Payload1" doc:id="ef4b88ac-b17d-4d72-8028-8b848750b1ff" />
+				<db:bulk-update doc:name="Bulk update" doc:id="60c87d7d-f06f-4902-90aa-974dc7abebc1" config-ref="Database_Config" >
+					<db:sql ><![CDATA[update Invoice 
+set Status=90,EditWho = 'Mule-Processed' 
+where EditWho = :EditWho
+and facilityname = 'Oakland']]></db:sql>
+				</db:bulk-update>
+			
+</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="c118eb26-ee21-4e24-801a-13a7a1f186d4" message="No records found in DB"/>
+				<set-payload value='#[%dw 2.0 &#10;output application/java &#10;---&#10;[{EditWho:"Mule-IP"}]]' doc:name="Set Payload" doc:id="7ef90f5a-f6b1-48d2-a2a4-f7b80d950f87" />
+				<db:bulk-update doc:name="Bulk update" doc:id="5b24776b-dca8-4433-baad-ce01c22964a3" config-ref="Database_Config">
+					<db:sql ><![CDATA[update Invoice 
+set EditWho = 'Mule-Processed', status = 90
+where EditWho = :EditWho
+and facilityname = 'Oakland' ]]></db:sql>
+				</db:bulk-update>
+			
+</otherwise>
+		</choice>
+		<flow-ref doc:name="Flow Reference" doc:id="4da156d0-9fda-40a7-bde3-e62a4f3c1c95" name="netsuiteautomateinvoiceFlowRamp"/>
+	
+</flow>
+
+		<flow name="netsuiteautomateinvoiceFlowRamp" doc:id="a79ed5ec-c3c8-4514-99b3-c596f7e25898" maxConcurrency="1">
+		<azure-storage:list-filesand-directory-in-directory doc:name="List filesand directory in directory" doc:id="bf045052-2e81-4736-b200-d47495727939" config-ref="Azure_Storage_Config" >
+			<azure-storage:directory directoryName="WMS/Bay Area/Input" shareName="invoice" />
+		</azure-storage:list-filesand-directory-in-directory>
+		<ee:transform doc:name="Transform Message" doc:id="663b5b77-a359-4b8f-ac11-afc34a62c71b" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+
+---
+payload map ((item) -> (item.uri.path splitBy "/")[sizeOf(item.uri.path splitBy "/") - 1])]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<foreach doc:name="For Each" doc:id="5d398928-7a10-448c-84b5-c88e53d69fc3" collection="#[payload]" >
+			<set-variable value="#[payload]" doc:name="Set Variable to FileName" doc:id="6e3fddbc-f12e-4e9d-b15b-a3d4e8649e9e" variableName="FileName" />
+			<azure-storage:download-file doc:name="Download file from Azure" doc:id="a3a2a562-c9e6-4b9b-8b3d-7b36712eaa0d" config-ref="Azure_Storage_Config" >
+				<ee:repeatable-file-store-stream inMemorySize="4" bufferUnit="MB"/>
+				<azure-storage:directory-file directoryName="WMS/Bay Area/Input" fileName="#[payload]" shareName="invoice" />
+			</azure-storage:download-file>
+			<set-variable value="#[%dw 2.0&#10;import * from dw::core::Binaries&#10;&#10;output text/plain&#10;---&#10;toBase64(payload as Binary)]" doc:name="rawExport" doc:id="0feca114-a215-42a9-8e01-1e88b5405b71" variableName="rawExport"/>
+			<set-variable value="#[%dw 2.0&#10;import * from dw::core::Binaries&#10;output application/octet-stream with binary deferred=true, bufferSize=5000000&#10;---&#10;fromBase64(vars.rawExport as String) as Binary]" doc:name="rawExportBinary" doc:id="32ae5759-080f-4c7c-a3ee-bf9d93986529" variableName="rawExportBinary"/>
+			<ee:transform doc:name="Transform Message" doc:id="876dcecd-9534-4390-9aa9-4651a3dc64aa" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+import * from dw::Runtime
+output application/json
+---
+{
+	user:1 wait 10000
+}
+]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<azure-storage:upload-file-in-directory-with-stream doc:name="Upload file in directory with stream" doc:id="af4fcd33-2082-4b87-b1be-d9e0cc8095b7" config-ref="Azure_Storage_Config">
+				<azure-storage:filename directoryName="WMS/Bay Area/Raw" fileName="#[vars.FileName]" fileStream="#[vars.rawExportBinary]" shareName="invoice"/>
+			</azure-storage:upload-file-in-directory-with-stream>
+			<azure-storage:download-file doc:name="Download file" doc:id="9413a7ce-f367-4b46-a658-9ea823ded78c" config-ref="Azure_Storage_Config">
+				<azure-storage:directory-file directoryName="WMS/Bay Area/Input" fileName="#[vars.FileName]" shareName="invoice"/>
+			</azure-storage:download-file>
+			<set-variable value="#[payload]" doc:name="Set Variable" doc:id="247440d4-d0cf-4054-88cf-5d06ce9ce810" variableName="FileDownload" mimeType="application/octet-stream" />
+			<ee:transform doc:name="Convert File to CSV" doc:id="98466ded-6fe3-4379-8383-d0762f40fb6f" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/csv
+---
+read(payload,"application/csv")
+]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<ee:transform doc:name="Remove Null Values from CSV" doc:id="57fc45be-83cb-46b1-b679-7084735093c3" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/csv
+
+// Assuming your input is in CSV format
+input payload application/csv
+
+---
+payload map ((row, index) -> row mapObject ((value, key) -> {
+    (key): if (value == "") " " else value
+}))
+]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<set-variable value="#[payload]" doc:name="Set Variable1" doc:id="86ded3e5-62cf-4f5a-914e-b90ffee7b1d3" variableName="cleanCSV" />
+			<logger level="INFO" doc:name="Logger" doc:id="77bb53cd-e5f4-4c8b-8121-286a82ef08bc" message="#[payload]" />
+			<ee:transform doc:name="NetSuite Translation" doc:id="0a9b68f1-41d9-42f8-8c4f-053c07c4fa7a" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+import * from dw::core::Strings
+import * from dw::core::Dates
+output application/xml
+ns ns1 urn:sales_2020_2.transactions.webservices.netsuite.com
+ns ns2 urn:core_2020_2.platform.webservices.netsuite.com
+ns platformCore urn:core_2020_2.platform.webservices.netsuite.com
+
+
+fun getLocationInternalId(locationName) = do {    
+    if(locationName == "Oakland 860") "4"
+    else if(locationName == "San Francisco") "6"
+    else if(locationName== "Oakland 940") "5"
+    else if(locationName== "1600 - Envision San Francisco") "6"
+    else if(locationName== "860 - Envision Oakland") "4"
+    else if(locationName== "940 - Envision Oakland") "5"
+    else if(locationName=="1600") "6"
+    else if (locationName=="860") "4"
+    else if (locationName=="El Paso") "17"
+    else if (locationName=="Laredo") "3"
+    else "0" // Default or error value, adjust as needed
+}
+
+fun getKeys (item, key1, key2) = do {
+	 
+	if (item[key1] != null) item[key1]
+	else if (item[key2] != null) item[key2]
+	else null 
+}
+
+---
+
+{   
+    "platformMsg:addList" @("xmlns:platformMsg": "urn:messages_2020_2.platform.webservices.netsuite.com", "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance"): {
+        (payload groupBy getKeys($, "INVOICE_EXTERNAL_ID", "Invoice External ID") pluck ((group, invoiceId) -> {
+            "platformMsg:record" @("xmlns:ns1":"urn:sales_2020_2.transactions.webservices.netsuite.com", "xsi:type": "ns1:SalesOrder", externalId: invoiceId, "xmlns:ns2": "urn:core_2020_2.platform.webservices.netsuite.com", "xmlns:ns3": "urn:common_2020_2.platform.webservices.netsuite.com"): {
+                ns1#class @("xsi:type":"platformCore:RecordRef","internalId":"1" ): "Balance Sheet",
+                ns1#entity @("xsi:type":"platformCore:RecordRef", "externalId": trim(getKeys(group[0], "CUSTOMER_EXTERNAL_ID", "Customer External ID"))): {                   
+                   
+                    ns2#name: getKeys(group[0], "CUSTOMER_NAME", "Customer Name")     
+                },
+                ns1#tranDate @("xsi:type":"xsd:dateTime"):
+                if(getKeys(group[0], "INVOICE_DATE", "Invoice Date") != " ")                 
+				(getKeys(group[0], "INVOICE_DATE", "Invoice Date"))
+                                            
+                 else 
+                today() as String {format:"yyyy-MM-dd"} ++ "T12:00:00.000",
+                 ns1#otherRefNum : if (getKeys(group[0], "PO_NUM", "PO #")  != " " and getKeys(group[0], "CONTAINER_NUM", "Container #") == " " and  getKeys(group[0], "CONSIGN_CODE", "Consign Code") == " ")
+    substring("REF#" ++ getKeys(group[0], "REFERENCE_NUM", "Reference #") ++ "/PO#" ++ getKeys(group[0], "PO_NUM", "PO #"), 0, 44)
+    else 
+    if (getKeys(group[0], "PO_NUM", "PO #") == " " and getKeys(group[0], "CONSIGN_CODE", "Consign Code") == " " and getKeys(group[0], "CONTAINER_NUM", "Container #") == " ")
+    substring("REF#" ++ getKeys(group[0], "REFERENCE_NUM", "Reference #"), 0, 44)
+    else 
+    if (getKeys(group[0], "PO_NUM", "PO #") != " " and (getKeys(group[0], "CONSIGN_CODE", "Consign Code") != " " or getKeys(group[0], "CONTAINER_NUM", "Container #") != " " ))
+    substring("REF#" ++ "" ++ getKeys(group[0], "REFERENCE_NUM", "Reference #") ++ "/PO#" ++ getKeys(group[0], "PO_NUM", "PO #") ++ "/" ++ getKeys(group[0], "CONTAINER_NUM", "Container #") ++ "/" ++ getKeys(group[0], "CONSIGN_CODE", "Consign Code" ) ,0,44)
+    else 	
+    if(getKeys(group[0], "PO_NUM", "PO #") == " " and getKeys(group[0], "CONTAINER_NUM", "Container #") == " " and getKeys(group[0], "CONSIGN_CODE", "Consign Code") != " ")
+	substring("REF#" ++ "" ++ getKeys(group[0], "REFERENCE_NUM", "Reference #") ++"/" ++ getKeys(group[0], "CONSIGN_CODE", "Consign Code") ,0,44)
+    else
+    if(getKeys(group[0], "PO_NUM", "PO #") == " " and getKeys(group[0], "CONTAINER_NUM", "Container #") != " " and getKeys(group[0], "CONSIGN_CODE", "Consign Code") == " ")
+	substring("REF#" ++ "" ++ getKeys(group[0], "REFERENCE_NUM", "Reference #") ++ "/" ++ getKeys(group[0], "CONTAINER_NUM", "Container #"),0,44)
+    else 
+    if(getKeys(group[0], "PO_NUM", "PO #") == " " and getKeys(group[0], "CONTAINER_NUM", "Container #") != " " and getKeys(group[0], "CONSIGN_CODE", "Consign Code") != " ")
+	substring("REF#" ++ "" ++ getKeys(group[0], "REFERENCE_NUM", "Reference #") ++ "/" ++ getKeys(group[0], "CONTAINER_NUM", "Container #") ++ "/" ++ getKeys(group[0], "CONSIGN_CODE", "Consign Code"),0,44)
+    else "REF#" ++ getKeys(group[0], "REFERENCE_NUM", "Reference #") ,
+                ns1#memo: "",
+                ns1#department @("xsi:type":"platformCore:RecordRef", "internalId":"1"): "Balance Sheet",
+                ns1#location @("xsi:type":"platformCore:RecordRef", "internalId":  getLocationInternalId(group["Location"][0])):
+                {
+                    ns2#name:group["Location"][1]                    
+                },
+                ns1#itemList @("replaceAll": "true"): {
+                    ns1#item: (group map ((item, index) -> {                          
+ns1#description: item["DESCRIPTION"],                            
+ns1#item @("xsi:type":"platformCore:RecordRef", "externalId": 
+                                           if (getKeys(group[0], "PO_NUM", "PO #") != " " and getKeys(group[0], "CONTAINER_NUM", "Container #") == " " and getKeys(group[0], "CONSIGN_CODE", "Consign Code") == " ")
+     getKeys(item, "ITEM_EXTERNAL_ID", "Item External ID")
+    else 
+    if (getKeys(group[0], "PO_NUM", "PO #") == " " and getKeys(group[0], "CONSIGN_CODE", "Consign Code") == " " and getKeys(group[0], "CONTAINER_NUM", "Container #") == " ")
+    getKeys(item, "ITEM_EXTERNAL_ID", "Item External ID")
+    else 
+    if (getKeys(group[0], "PO_NUM", "PO #") != " " and (getKeys(group[0], "CONSIGN_CODE", "Consign Code") != " " or getKeys(group[0], "CONTAINER_NUM", "Container #") != " " ))
+     getKeys(item, "ITEM_EXTERNAL_ID", "Item External ID")
+    else  getKeys(item, "ITEM_EXTERNAL_ID", "Item External ID")): {  // Inner ns1#item tag with attributes                                 
+                                
+                                ns2#name: getKeys(item, "ITEM_NAME", "Item Name"),
+                                                            },
+                            ns1#quantity: item["Quantity"],
+                            ns1#rate: item["Rate"],   
+                             ns1#location @("xsi:type":"platformCore:RecordRef", "internalId":getLocationInternalId(group["Location"][0])):{},
+				ns1#amount :item["Amount"],       
+                    }))
+                },
+             ns1#customFieldList @("xmlns:ns2":ns2,"xsi:type":"ns2:CustomFieldList"): {
+                    ns2#customField @("scriptId":"custbody_ecs_service_order", "xsi:type":"ns2:StringCustomFieldRef"):{
+                        ns2#value @("xsi:type":"xsd:string"):getKeys(group[0], "CONTAINER_NUM", "Container #")
+                    },
+                    ns2#customField @("scriptId":"custbody_ecs_reference", "xsi:type":"ns2:StringCustomFieldRef"):{
+                        ns2#value @("xsi:type":"xsd:string"):getKeys(group[0], "REFERENCE_NUM", "Reference #")
+                    },
+                    ns2#customField @("scriptId":"custbody_ecs_order_source","xsi:type":"ns2:SelectCustomFieldRef",):{
+                        ns2#value @("internalId":"1","xsi:type":"ns2:ListOrRecordRef"):{}
+                    }                                
+                },                
+            }
+        }))
+    }
+}
+]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<set-variable value="#[payload]" doc:name="Set Variable2" doc:id="26396f9a-41f4-4df8-9d62-6ff8022d916c" variableName="NetSuiteCall" />
+			<logger level="INFO" doc:name="Logger1" doc:id="d1afae28-cbe0-4ff9-abb6-41c64c91c86a" message="#[payload]" />
+			<until-successful maxRetries="5" doc:name="Until Successful" doc:id="05df8f83-cfd9-4ef8-821e-7ae0d36221f6" millisBetweenRetries="30000">
+				<netsuite:add-list doc:name="Add list" doc:id="4d93e544-f2dc-458a-9cd1-a4885a86bf9d" config-ref="NetSuite_Config_PROD" type="SalesOrder">
+					<ee:repeatable-file-store-stream inMemorySize="2056" />
+				</netsuite:add-list>
+			</until-successful>
+			<set-variable value="#[payload]" doc:name="Set NetSuite Response to XML variable" doc:id="c0ba8c5a-1e27-4cda-ae5a-5480c3833564" variableName="NetSuiteXMLResponse" />
+			<logger level="INFO" doc:name="Logger2" doc:id="2a1d4430-74b0-41cd-83b0-742fd0f38eed" message="#[vars.NetSuiteXMLResponse]" category="NetSuiteXMLResponse" />
+			<set-variable value='#[%dw 2.0&#10;        output application/java&#10;        ns ns0 urn:core.platform.webservices.netsuite.com&#10;        ---&#10;sizeOf(&#10;    payload.addListResponse.writeResponseList.*writeResponse &#10;        filter ($.ns0#status.@isSuccess == "false") // Filter out only the false isSuccess&#10;        map {&#10;            isSuccess: $.ns0#status.@isSuccess,&#10;            errorMessage: $.ns0#status.ns0#statusDetail.ns0#message default "",            &#10;        }&#10;)]' doc:name='NetSuiteBoolean for routing. Returns "true" if there is an error and false if no error found' doc:id="a9fd73c8-805c-43e5-b71c-03ff7c019946" variableName="NetSuiteBoolean" />
+			<choice doc:name="Choice" doc:id="1482fefb-7e0a-42aa-a888-3dda03770eeb" >
+				<when expression="#[vars.NetSuiteBoolean == 0]" >
+					<logger level="INFO" doc:name="Logger" doc:id="9cebd21a-5ce9-46fe-b155-2b792260b69c" message="#[vars.NetSuiteResponse]" category="NetSuite Response" />
+					<set-variable value="#[%dw 2.0&#10;import * from dw::core::Binaries&#10;&#10;output text/plain&#10;---&#10;toBase64(vars.FileDownload as Binary)]" doc:name="Set Variable" doc:id="d3e7da0c-2d5d-4da0-a6dc-e9b38963667b" variableName="binary1" />
+					<set-variable value="#[%dw 2.0&#10;import * from dw::core::Binaries&#10;output application/octet-stream  bufferSize=72000, deferred=true&#10;---&#10;fromBase64(vars.binary1 as String) as Binary]" doc:name="Binary Final" doc:id="33bcb6ac-9cae-4cdd-9cc9-386ac2c1dd4a" variableName="binary2" />
+					<azure-storage:upload-file-in-directory-with-stream doc:name="Upload file in directory with stream" doc:id="d3919703-2511-4aa5-ba3b-4fc1d4c036b0" config-ref="Azure_Storage_Config" >
+						<azure-storage:filename directoryName="WMS/Bay Area/Processed" fileName='#[vars.FileName replace ".csv" with "_" ++ (now() as String {format:"yyyy_MM_dd_HH_mm_ss_SSS"&#10;}) ++ ".csv"]' fileStream="#[vars.binary2]" shareName="invoice" />
+					</azure-storage:upload-file-in-directory-with-stream>
+					<azure-storage:delete-file doc:name="Delete file" doc:id="51be9741-8e1c-46fb-a4e5-6606f9b09da1" config-ref="Azure_Storage_Config" >
+						<azure-storage:directory-file directoryName="WMS/El Paso/Input" fileName="#[vars.FileName]" shareName="invoice" />
+					</azure-storage:delete-file>
+				</when>
+				<otherwise >
+					<set-variable value='#[%dw 2.0&#10;        output application/java&#10;        ns ns0 urn:core.platform.webservices.netsuite.com&#10;        ---&#10;sizeOf(&#10;    payload.addListResponse.writeResponseList.*writeResponse &#10;        filter ($.ns0#status.@isSuccess == "true") // Filter out only the false isSuccess&#10;        map {&#10;            isSuccess: $.ns0#status.@isSuccess,&#10;            errorMessage: $.ns0#status.ns0#statusDetail.ns0#message default "",            &#10;        }&#10;)]' doc:name="Set Variable" doc:id="651147d9-dedd-4a81-a570-354f6399550a" variableName="NetSuitePartialBoolean"/>
+					<set-variable value="#[//array of good responses&#10;&#10;%dw 2.0&#10;output application/json&#10;ns platformCore urn:core.platform.webservices.netsuite.com&#10;&#10;---&#10;vars.NetSuiteXMLResponse.addListResponse.writeResponseList.*writeResponse map ((response) -&gt; &#10;    response.baseRef.@externalId&#10;) filter ((id) -&gt; id != null)]" doc:name="Get Good Responses" doc:id="87bc7612-f7fe-4d3e-a046-fdcfaa04bc64" variableName="NetSuiteGoodResponses" />
+					<logger level="INFO" doc:name="Logger" doc:id="f8618158-8d1b-4805-a084-873ea0fba7a2" message="#[vars.NetSuiteGoodResponses]" category="Good Responses" />
+					<set-variable value='#[%dw 2.0&#10;output application/csv&#10;&#10;var externalIdsToExclude = vars.NetSuiteGoodResponses&#10;&#10;---&#10;vars.cleanCSV filter (row) -&gt; !(externalIdsToExclude contains row.INVOICE_EXTERNAL_ID)]' doc:name="Filter out all good responses from CSV in CSV format" doc:id="6b3c8b78-979e-4c55-b251-5dd92140822b" variableName="errorRecordsCSV" />
+					<set-variable value='#[%dw 2.0&#10;output text/plain&#10;&#10;var externalIdsToExclude = vars.NetSuiteGoodResponses&#10;&#10;---&#10;write(vars.cleanCSV filter (row) -&gt; !(externalIdsToExclude contains row.INVOICE_EXTERNAL_ID), "application/csv")]' doc:name="Filter out all good responses in Plain Text" doc:id="fc55aa01-49e7-4f11-a973-e93beb257dfe" variableName="errorRecords" />
+					<set-variable value='#[%dw 2.0&#10;output application/csv&#10;---&#10;vars.cleanCSV filter ((record, index) -&gt; vars.NetSuiteGoodResponses contains record.INVOICE_EXTERNAL_ID)]' doc:name="Filter out all error responses from CSV in CSV format" doc:id="daeef275-8436-4930-8516-215744e38551" variableName="NetSuite Good Responses" />
+					<set-variable value='#[%dw 2.0&#10;output text/plain&#10;&#10;var externalIdsToInclude = vars.NetSuiteGoodResponses&#10;&#10;---&#10;write(vars.cleanCSV filter ((record, index) -&gt; externalIdsToInclude contains record.INVOICE_EXTERNAL_ID), "application/csv")]' doc:name="Filter out all error responses in Plain Text" doc:id="7f8e11b8-3bad-4b70-8a20-e0da686a2a94" variableName="goodRecords" />
+					<set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;(payload.*addListResponse.*writeResponseList.*writeResponse &#10;  filter (response) -&gt; (response.*status.@isSuccess[0] as String) != "true")&#10;  map ((response) -&gt; {&#10;      isSuccess: response.*status.@isSuccess[0] as String,&#10;      message: response.*status.*statusDetail.*message joinBy " " default ""&#10;  })]' doc:name="Generate all Error Responses in Json" doc:id="f68527a8-311d-4100-a31f-d4ab96d9155a" variableName="ErrorMessages" />
+					<set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;(payload.*addListResponse.*writeResponseList.*writeResponse &#10;  filter (response) -&gt; (response.*status.@isSuccess[0] as String) == "true")&#10;  map ((response) -&gt; {&#10;      isSuccess: response.*status.@isSuccess[0] as String,&#10;      message: response.*status.*statusDetail.*message joinBy " " default ""&#10;  })]' doc:name="Generate all Good Responses in JSON" doc:id="58741dbf-7d03-468e-9ae5-5ae3bd5527e3" variableName="GoodMessages" />
+					<set-variable value='#[%dw 2.0&#10;output application/csv&#10;&#10;// Define your array of Invoice External IDs to keep&#10;var idsToKeep = vars.NetSuiteGoodResponses&#10;---&#10;// Filter the payload to only include records with an Invoice External ID in idsToKeep&#10;vars.cleanCSV filter ((record, index) -&gt; idsToKeep contains record.INVOICE_EXTERNAL_ID)]' doc:name="GoodRecordsCleanCSV" doc:id="4eee58ce-3e5f-4739-8259-9203d56a8693" variableName="GoodRecordsCleanCSV" />
+					<set-variable value='#[%dw 2.0&#10;output text/plain&#10;&#10;---&#10;write(vars.GoodRecordsCleanCSV ,"application/csv")]' doc:name="GoodRecordsCleanCSVText" doc:id="1d259c10-0345-41f6-ac7d-2b06bba4ff7d" variableName="GoodRecordsCleanCSVText" />
+					<logger level="INFO" doc:name="Logger1" doc:id="f1cb28ee-8eb7-4b44-900d-c2de66d55519" message="#[vars.GoodRecordsCleanCSV]" category="GoodRecordsCleanCSV" />
+					<set-variable value='#[%dw 2.0&#10;output application/csv&#10;var messages = vars.ErrorMessages&#10;var groupedCsv = vars.errorRecordsCSV groupBy ((item) -&gt; item."INVOICE_EXTERNAL_ID")&#10;var distinctInvoiceIds = groupedCsv pluck ((value, key, index) -&gt; key)&#10;---&#10;flatten(&#10;    distinctInvoiceIds map ((invoiceId, index) -&gt; &#10;        (groupedCsv[invoiceId] map ((record) -&gt; &#10;            record ++ {&#10;                "NetSuiteErrorString": &#10;                if (sizeOf(messages) &gt; index) &#10;                    messages[index].message &#10;                else &#10;                    ""&#10;            }&#10;        ))&#10;    )&#10;)]' doc:name="Write Error Records to CSV" doc:id="b6352bcb-38cf-48a4-810e-15aa126cbe04" variableName="errorCSV" />
+					<set-variable value='#[%dw 2.0&#10;output text/plain&#10;&#10;---&#10;write(vars.errorCSV ,"application/csv")]' doc:name="Output Error Records in plain text format" doc:id="1bf69a69-b981-47d1-8ce2-398220ca0912" variableName="errorCSVText" />
+					<set-variable value='#[%dw 2.0&#10;import * from dw::core::Strings&#10;output application/xml&#10;ns ns0 urn:messages.platform.webservices.netsuite.com&#10;ns ns1 urn:customization_2020_2.setup.webservices.netsuite.com&#10;ns ns2 urn:core_2020_2.platform.webservices.netsuite.com&#10;ns ns3 urn:common_2020_2.platform.webservices.netsuite.com&#10;ns ns4 urn:sales_2020_2.transactions.webservices.netsuite.com&#10;ns platformCore urn:core_2020_2.platform.webservices.netsuite.com&#10;---&#10;&#10;{&#10;ns0#addList: {&#10;(vars.errorCSV groupBy ($."INVOICE_EXTERNAL_ID") pluck ((group, invoiceId) -&gt; {&#10;ns0#record @("xmlns:ns1": ns1, xsi#"type": "ns1:CustomRecord"): {&#10;ns1#customFieldList:&#10;{&#10;SelectCustomFieldRef__custrecord_el_frice_id:&#10;{&#10;ns2#value @(typeId:"270", internalId:"2"):{}&#10;},&#10;StringCustomFieldRef__custrecord_el_execution_id:&#10;{ ns2#value:uuid()//"execution-44403283-d28d-4bbc-a77c-44926daf3a4b-2023.12.07"&#10;},&#10;StringCustomFieldRef__custrecord_el_script_id:&#10;{&#10;ns2#value:"Sales Order Integration"&#10;},&#10;StringCustomFieldRef__custrecord_el_record_type:&#10;{&#10;ns2#value:"Sales Order"&#10;},&#10;StringCustomFieldRef__custrecord_el_error_code:&#10;{&#10;ns2#value:400&#10;},&#10;StringCustomFieldRef__custrecord_el_source_system:&#10;{&#10;ns2#value:"WMS"&#10;},&#10;StringCustomFieldRef__custrecord_el_target_system:&#10;{&#10;ns2#value:"NetSuite"&#10;},&#10;StringCustomFieldRef__custrecord_el_record_reference:&#10;{&#10;ns2#value:group[0]["INVOICE_EXTERNAL_ID"]&#10;},&#10;StringCustomFieldRef__custrecord_el_error_message:&#10;{&#10;ns2#value:group[0]["NetSuiteErrorString"]&#10;},&#10;BooleanCustomFieldRef__custrecord_el_is_integration_record:&#10;{&#10;	ns2#value:"true"&#10;}&#10;&#10;}&#10;&#10;}&#10;}))&#10;}&#10;}]' doc:name="Create Netsuite Error Handling Payload" doc:id="66fa3c5c-4f1f-4023-baf3-f5a71cd67eae" variableName="NetSuiteErrorHandlingPayload" />
+					<set-variable value="#[%dw 2.0&#10;import * from dw::core::Binaries&#10;&#10;output text/plain&#10;---&#10;toBase64(vars.errorCSVText)]" doc:name="Set Error CSV to base64 string" doc:id="6155522d-e7ef-4982-8017-a97a46c6a79c" variableName="textError" />
+					<set-variable value="#[%dw 2.0&#10;import * from dw::core::Binaries&#10;output application/octet-stream  bufferSize=5000000, deferred=true&#10;---&#10;fromBase64(vars.textError as String) as Binary]" doc:name="set error base64 to binary" doc:id="7b63bbf1-a9ee-4a86-bcec-6a57c956b4a8" variableName="binaryError2" />
+					<ee:transform doc:name="Transform Message" doc:id="2917a6ce-2a9e-4414-83d0-92ab1112f468">
+						<ee:message>
+							<ee:set-payload><![CDATA[%dw 2.0
+import * from dw::Runtime
+output application/json
+---
+{
+	user:1 wait 10000
+}
+]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<azure-storage:upload-file-in-directory-with-stream doc:name="Upload Error Records" doc:id="b9038c29-4278-462b-bf9a-d6a037079f76" config-ref="Azure_Storage_Config" >
+						<reconnect-forever />
+						<azure-storage:filename directoryName="WMS/Bay Area/Error" fileName='#[vars.FileName replace ".csv" with "_" ++ (now() as String {format:"yyyy_MM_dd_HH_mm_ss_SSS"&#10;}) ++ ".csv"]' fileStream="#[vars.binaryError2]" shareName="invoice" />
+					</azure-storage:upload-file-in-directory-with-stream>
+					<choice doc:name="Choice" doc:id="81685c50-8a95-4bbf-8496-ae66d0501e8e" >
+						<when expression="#[vars.NetSuitePartialBoolean &gt;= 1]">
+							<set-variable value="#[%dw 2.0&#10;import * from dw::core::Binaries&#10;&#10;output text/plain&#10;---&#10;toBase64(vars.GoodRecordsCleanCSVText)]" doc:name="Set Good CSV records to base64 string" doc:id="58227d73-6e82-480e-a655-074370ad6851" variableName="textGood" />
+							<set-variable value="#[%dw 2.0&#10;import * from dw::core::Binaries&#10;output application/octet-stream with binary deferred=true, bufferSize=52428800&#10;---&#10;fromBase64(vars.textGood as String) as Binary]" doc:name="Set Good Records base64 to Binary" doc:id="afdebf23-f567-4cbc-ac90-aaee6c774002" variableName="binaryGood" />
+							<ee:transform doc:name="Transform Message" doc:id="a8b2c9ef-fcb9-45f0-ad87-3e5b77366a12">
+								<ee:message>
+									<ee:set-payload><![CDATA[%dw 2.0
+import * from dw::Runtime
+output application/json
+---
+{
+	user:1 wait 10000
+}
+]]></ee:set-payload>
+								</ee:message>
+							</ee:transform>
+							<azure-storage:upload-file-in-directory-with-stream doc:name="Upload Good Records" doc:id="05835768-03da-4dea-9e44-327ef342c429" config-ref="Azure_Storage_Config">
+						<azure-storage:filename directoryName="WMS/Bay Area/Processed" fileName='#[vars.FileName replace ".csv" with "_" ++ (now() as String {format:"yyyy_MM_dd_HH_mm_ss_SSS"&#10;}) ++ ".csv"]' fileStream="#[vars.binaryGood]" shareName="invoice" />
+					</azure-storage:upload-file-in-directory-with-stream>
+							<azure-storage:delete-file doc:name="Delete file" doc:id="72af4072-b790-4321-b55e-18db9871a548" config-ref="Azure_Storage_Config">
+								<azure-storage:directory-file directoryName="WMS/Bay Area/Input" fileName="#[vars.FileName]" shareName="invoice"/>
+							</azure-storage:delete-file>
+						
+
+
+</when>
+						<otherwise >
+							<azure-storage:delete-file doc:name="Delete file" doc:id="8b5458b5-48cc-46f6-b51d-19554562ed50" config-ref="Azure_Storage_Config">
+								<azure-storage:directory-file directoryName="WMS/Bay Area/Input" fileName="#[vars.FileName]" shareName="invoice" />
+							</azure-storage:delete-file>
+						
+</otherwise>
+					</choice>
+				
+</otherwise>
+			</choice>
+		</foreach>
+	
+</flow>
+	
+</mule>
